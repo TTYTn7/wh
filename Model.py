@@ -42,6 +42,9 @@ class Model:
         self.faction_keywords = faction_keywords
 
     def save_roll(self, num_wounds: int, num_crit_wounds: int, weapon: 'Weapon', engagement: 'Engagement') -> int:
+        if num_wounds == 0:
+            logger.debug('No wounds to save.')
+            return 0
         wounds_taken = 0
         # No save vs mortal wounds so crit wounds score direct damage, and then we only consider the normal wounds
         if 'devastating_wounds' in weapon.keywords:
@@ -50,6 +53,7 @@ class Model:
 
         rolls = np.random.randint(1, 7, num_wounds)
         wounds_taken += (rolls == 1).sum() # Unmodified rolls of 1 always fail
+        logger.debug(f'Initial save rolls: {rolls}. Critical fails: {wounds_taken}. Reminder rolls: {rolls[(rolls != 1)]}')
         rolls = rolls[(rolls != 1)] # Exclude auto failed rolls
 
         normal_save = self.save
@@ -58,15 +62,26 @@ class Model:
         # make sure cover only works vs shooting
         if engagement.in_cover and weapon.weapon_range > 1:
             if normal_save >= 4 or weapon.armor_piercing > 0:
-                normal_save += 1
+                rolls += 1
+                logger.debug(f'Due to the target being in cover, rolls receive a +1 modifier. New rolls: {rolls}')
 
         # Make sure save wasn't incremented by more than 1
         if normal_save > (self.save + 1):
             normal_save = self.save + 1
         # Select between normal and invulnerable save
-        save_used = min(normal_save + weapon.armor_piercing, self.invulnerable_save)
+        if normal_save + weapon.armor_piercing < self.invulnerable_save:
+            save_used = normal_save
+        else:
+            save_used = self.invulnerable_save
+        logger.debug(
+            f'{self.name}\'s save characteristic used: {save_used}. '
+        )
         rolls -= weapon.armor_piercing
-        wounds_taken += (rolls >= save_used).sum()
+        wounds_taken += (rolls < save_used).sum()
+        logger.debug(
+            f'Armor piercing: {weapon.armor_piercing}. Final roll values: {rolls}, resulting in {wounds_taken} '
+            f'successful instances of damage.'
+        )
         return wounds_taken
 
     def take_damage(self, damage_taken: int):
