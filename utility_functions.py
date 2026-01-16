@@ -51,12 +51,13 @@ def find_wound_roll_requirement(strength: int, toughness: int) -> int:
     return 4 # implied that strength == toughness
 
 
-def hazardous(wielder: 'Model'):
-    if 6 in roll(1):
-        logger.debug('Weapon exploding because it\'s hazardous and rolled a 6.')
-        wielder.take_damage(3)
+def calculate_damage(num_wounds_taken: int, weapon: 'Weapon', engagement: 'Engagement') -> int:
+    damage = num_wounds_taken * (weapon.damage + melta(weapon.weapon_range, weapon.keywords, engagement.distance))
+    logger.debug(f'{num_wounds_taken} wounds at {weapon.damage} damage each deal a total of {damage} damage.')
+    return damage
 
 
+# Keyword functions:
 def get_keyword_x_value(keyword: str | None) -> int:
     if keyword:
         return int(keyword.split('_')[-1])
@@ -187,6 +188,12 @@ def feel_no_pain(damage_taken: int, keywords: List[str]) -> int:
     return damage_ignored
 
 
+def hazardous(wielder: 'Model'):
+    if 6 in roll(1):
+        logger.debug('Weapon exploding because it\'s hazardous and rolled a 6.')
+        wielder.take_damage(3)
+
+
 def deadly_demise(keywords: List[str]) -> int:
     deadly_demise_full = check_keyword('deadly_demise', keywords)
     if deadly_demise_full:
@@ -195,9 +202,3 @@ def deadly_demise(keywords: List[str]) -> int:
             logger.debug(f'Exploding for {explosion_damage} damage in a 6-inch radius!')
             return explosion_damage
     return 0
-
-
-def calculate_damage(num_wounds_taken: int, weapon: 'Weapon', engagement: 'Engagement') -> int:
-    damage = num_wounds_taken * (weapon.damage + melta(weapon.weapon_range, weapon.keywords, engagement.distance))
-    logger.debug(f'{num_wounds_taken} wounds at {weapon.damage} damage each deal a total of {damage} damage.')
-    return damage
