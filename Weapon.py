@@ -14,7 +14,7 @@ class Weapon:
             self,
             name: str,
             weapon_range: int,
-            attacks: int,
+            attacks: int | str,
             ballistic_skill: int,
             strength: int,
             armor_piercing: int,
@@ -63,16 +63,22 @@ class Weapon:
             return False
         return True
 
-    def hit_roll(self, engagement: 'Engagement') -> Tuple[int, int]:
-        logger.debug(f'Weapon number of attacks: {self.attacks}.')
-        if 'torrent' in self.keywords:
-            logger.debug('All attacks automatically hit due to the weapon having the "torrent" keyword.')
-            return self.attacks, 0
-
-        num_attacks = self.attacks
+    def get_num_attacks(self, engagement: 'Engagement'):
+        if 'D' in str(self.attacks).upper():
+            num_attacks = np.random.randint(1, 7, int(self.attacks[1]))
+        else:
+            num_attacks = self.attacks
         num_attacks += rapid_fire(self.weapon_range, self.keywords, engagement.distance)
         if 'blast' in self.keywords:
             num_attacks += (engagement.num_targets // 5)
+        return num_attacks
+
+    def hit_roll(self, engagement: 'Engagement') -> Tuple[int, int]:
+        num_attacks = self.get_num_attacks(engagement)
+        logger.debug(f'Weapon number of attacks: {num_attacks}.')
+        if 'torrent' in self.keywords:
+            logger.debug('All attacks automatically hit due to the weapon having the "torrent" keyword.')
+            return num_attacks, 0
 
         rolls =  np.random.randint(1, 7, num_attacks)
         num_crit_hits, rolls = handle_crits(rolls, 1, 6)
