@@ -52,7 +52,6 @@ class Model:
             logger.debug(f'Suffering {num_crit_wounds} mortal wounds due to {num_crit_wounds} critical wounds from a \
              weapon with the devastating wounds keyword. Remaining wounds to resolve: {num_wounds}')
 
-        # rolls = np.random.randint(1, 7, num_wounds)
         rolls = roll(num_wounds)
         crit_fails = (rolls == 1).sum() # Unmodified rolls of 1 always fail
         wounds_taken += crit_fails

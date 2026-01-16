@@ -64,34 +64,33 @@ class Weapon:
 
     def get_num_attacks(self, engagement: 'Engagement'):
         if 'D' in str(self.attacks).upper():
-            # num_attacks = np.random.randint(1, 7, int(self.attacks[1]))
             num_attacks = roll(int(self.attacks[1]))
         else:
             num_attacks = self.attacks
         num_attacks += rapid_fire(self.weapon_range, self.keywords, engagement.distance)
         if 'blast' in self.keywords:
-            num_attacks += (engagement.num_targets // 5)
+            num_attacks += blast(engagement)
         return num_attacks
 
-    def hit_roll(self, engagement: 'Engagement') -> Tuple[int, int]:
+
+    def hit_roll(self, engagement: 'Engagement') -> Tuple[int|None, int|None]:
+        if not self.can_attack(engagement):
+            return None, None
+
         num_attacks = self.get_num_attacks(engagement)
         logger.debug(f'Weapon number of attacks: {num_attacks}.')
         if 'torrent' in self.keywords:
             logger.debug('All attacks automatically hit due to the weapon having the "torrent" keyword.')
             return num_attacks, 0
 
-        # rolls =  np.random.randint(1, 7, num_attacks)
         rolls = roll(num_attacks)
         num_crit_hits, rolls = handle_crits(rolls, 1, 6)
         if not engagement.line_of_sight: # implied that the weapon has 'indirect_fire' keyword, else would have failed the self.can_attack(engagement) check
             rolls = rolls[(rolls > 3)]
             rolls -= 1
-        if 'heavy' in self.keywords and engagement.last_action == 'remained_stationary':
-            rolls += 1
-            logger.debug(
-                f'Rolls get upgraded due to the wielder having remained stationary and the weapon having the "heavy" '
-                f'keyword. Previous rolls: {rolls - 1}, upgraded rolls: {rolls}'
-            )
+
+        if 'heavy' in self.keywords:
+            rolls = heavy(rolls, engagement)
 
         logger.debug(f'Hit requirement is {self.ballistic_skill}')
         num_hits = (rolls >= self.ballistic_skill).sum() + num_crit_hits
@@ -100,47 +99,36 @@ class Weapon:
         return num_hits, num_crit_hits
 
     def wound_roll(self, engagement: 'Engagement', wielder: 'Model') -> Tuple[int, int] | None:
-        if not self.can_attack(engagement):
-            return None
-
         num_hits, num_crit_hits = self.hit_roll(engagement)
         if num_hits == 0:
             return 0, 0
+        elif num_hits is None:
+            return None
 
         num_wounds = 0
+        if 'lethal_hits' in self.keywords:  # crit hits automatically become wounds
+            num_wounds, num_hits = lethal_hits(num_hits, num_crit_hits)
+
         wound_roll_requirement = find_wound_roll_requirement(self.strength, engagement.opponent.toughness)
         logger.debug(
             f'Wound roll requirement is {wound_roll_requirement} due to weapon strength being {self.strength} and '
             f'opponent toughness being {engagement.opponent.toughness}.'
         )
 
-        if 'lethal_hits' in self.keywords: # crit hits automatically become wounds
-            num_wounds += num_crit_hits
-            num_hits -= num_crit_hits
-            logger.debug(
-                f'All {num_crit_hits} critical hits automatically become wounds because of the weapon\'s "lethal hits" '
-                f'keyword. Only {num_hits} need to be rolled for.'
-            )
-
-        # rolls = np.random.randint(1, 7, num_hits)
         rolls = roll(num_hits)
-        crit_success_boundary = anti_keyword(self.keywords, engagement.opponent.keywords)
-
-        num_crit_wounds, rolls = handle_crits(rolls, fail_boundary=1, success_boundary=crit_success_boundary)
-        if 'lance' in self.keywords and engagement.last_action == 'charged':
-            rolls += 1
-            logger.debug(
-                f'Rolls get upgraded due to the wielder having charged and the weapon having the "lance" keyword. '
-                f'Previous rolls: {rolls - 1}, upgraded rolls: {rolls}'
-            )
-
-        num_wounds += (rolls >= wound_roll_requirement).sum() + num_crit_wounds
         if 'twin-linked' in self.keywords:
-            num_wounds += twin_linked(rolls, wound_roll_requirement)
+            rolls = twin_linked(rolls, wound_roll_requirement)
+
+        crit_success_boundary = anti_keyword(self.keywords, engagement.opponent.keywords)
+        num_crit_wounds, rolls = handle_crits(rolls, fail_boundary=1, success_boundary=crit_success_boundary)
+
+        if 'lance' in self.keywords:
+            rolls = lance(rolls, engagement)
 
         if 'hazardous' in self.keywords:
-            wielder.wounds -= hazardous()
+            hazardous(wielder)
 
+        num_wounds += (rolls >= wound_roll_requirement).sum() + num_crit_wounds
         logger.debug(f'Wounds: {num_wounds}, of which Crits: {num_crit_wounds}')
         return num_wounds, num_crit_wounds
 

@@ -6,10 +6,22 @@ from typing import List, Tuple, TYPE_CHECKING
 if TYPE_CHECKING:
     from Weapon import Weapon
     from Engagement import Engagement
+    from Model import Model
 
 
 def roll(num_rolls: int) -> NDArray[np.integer]:
     return np.random.randint(1, 7, num_rolls)
+
+
+def re_roll_fails(rolls: NDArray[np.integer], success_boundary: int) -> NDArray[np.integer]:
+    num_fails = (rolls < success_boundary).sum()
+    successes = rolls[rolls >= success_boundary]
+    re_rolls = roll(num_fails)
+    return np.concatenate([successes, re_rolls])
+
+
+def re_roll_ones(rolls: NDArray[np.integer]) -> NDArray[np.integer]:
+    return re_roll_fails(rolls, 2)
 
 
 def handle_crits(rolls: NDArray[np.integer], fail_boundary: int, success_boundary: int) -> Tuple[int, NDArray[np.integer]]:
@@ -39,12 +51,10 @@ def find_wound_roll_requirement(strength: int, toughness: int) -> int:
     return 4 # implied that strength == toughness
 
 
-def hazardous() -> int:
-    # if 6 in np.random.randint(1, 7, 1):
+def hazardous(wielder: 'Model'):
     if 6 in roll(1):
         logger.debug('Weapon exploding because it\'s hazardous and rolled a 6.')
-        return 3
-    return 0
+        wielder.take_damage(3)
 
 
 def get_keyword_x_value(keyword: str | None) -> int:
@@ -75,17 +85,14 @@ def sustained_hits(num_crit_hits: int, keywords: List[str]) -> int:
     return 0
 
 
-def twin_linked(rolls: NDArray[np.integer], wound_roll_requirement: int) -> int:
-    num_unsuccessful_rolls = (rolls < wound_roll_requirement).sum()
-    # re_rolls = np.random.randint(1, 7, num_unsuccessful_rolls)
-    re_rolls = roll(num_unsuccessful_rolls)
-    successful_rolls = (re_rolls >= wound_roll_requirement)
+def twin_linked(rolls: NDArray[np.integer], wound_roll_requirement: int) -> NDArray[np.integer]:
+    re_rolls = re_roll_fails(rolls, wound_roll_requirement)
     logger.debug(
         f'Using twin-linked. Rolls: {rolls} with requirement {wound_roll_requirement}.'
-        f'Number of unsuccessful rolls: {num_unsuccessful_rolls}.'
-        f'Re-rolls: {re_rolls}, resulting in additional {successful_rolls.sum()} successful rolls.'
+        f'Unsuccessful: {(rolls < wound_roll_requirement).sum()}, Successful: {(rolls >= wound_roll_requirement).sum()}'
+        f'Re-rolls: {re_rolls} for a total of {(rolls >= wound_roll_requirement).sum()} successful rolls.'
     )
-    return successful_rolls.sum()
+    return re_rolls
 
 
 def rapid_fire(weapon_range: int, keywords: List[str], distance: float) -> int:
@@ -100,6 +107,42 @@ def rapid_fire(weapon_range: int, keywords: List[str], distance: float) -> int:
         )
         return rapid_fire_value
     return 0
+
+
+def lethal_hits(num_hits: int, num_crit_hits: int) -> Tuple[int, int]:
+    wounds = num_crit_hits
+    num_hits -= num_crit_hits
+    logger.debug(
+        f'All {num_crit_hits} critical hits automatically become wounds because of the weapon\'s "lethal hits" '
+        f'keyword. Only {num_hits} need to be rolled for.'
+    )
+    return wounds, num_hits
+
+
+def lance(rolls: NDArray[np.integer], engagement: 'Engagement') -> NDArray[np.integer]:
+    if engagement.last_action == 'charged':
+        upgraded_rolls = rolls + 1
+        logger.debug(
+            f'Rolls get upgraded due to the wielder having charged and the weapon having the "lance" keyword. '
+            f'Previous rolls: {rolls}, upgraded rolls: {upgraded_rolls}'
+        )
+        return upgraded_rolls
+    return rolls
+
+
+def heavy(rolls: NDArray[np.integer], engagement: 'Engagement') -> NDArray[np.integer]:
+    if engagement.last_action == 'remained_stationary':
+        upgraded_rolls = rolls + 1
+        logger.debug(
+            f'Rolls get upgraded due to the wielder having remained stationary and the weapon having the "heavy" keyword. '
+            f'Previous rolls: {rolls}, upgraded rolls: {upgraded_rolls}'
+        )
+        return upgraded_rolls
+    return rolls
+
+
+def blast(engagement: 'Engagement') -> int:
+    return engagement.num_targets // 5
 
 
 def melta(weapon_range: int, keywords: List[str], distance: float) -> int:
@@ -134,13 +177,12 @@ def feel_no_pain(damage_taken: int, keywords: List[str]) -> int:
     damage_ignored = 0
     feel_no_pain_full = check_keyword('feel_no_pain', keywords)
     if feel_no_pain_full:
-        # rolls = np.random.randint(1, 7, damage_taken)
         rolls = roll(damage_taken)
-        amount_of_pain_not_felt = get_keyword_x_value(feel_no_pain_full)
-        damage_ignored = (rolls >= amount_of_pain_not_felt).sum()
+        fnp_boundary = get_keyword_x_value(feel_no_pain_full)
+        damage_ignored = (rolls >= fnp_boundary).sum()
         logger.debug(
             f'Ignoring {damage_ignored} out of {damage_taken} damage due to the "Feel No Pain" rule. '
-            f'FNP boundary: {amount_of_pain_not_felt} and rolls: {rolls}'
+            f'FNP boundary: {fnp_boundary} and rolls: {rolls}'
         )
     return damage_ignored
 
@@ -148,7 +190,6 @@ def feel_no_pain(damage_taken: int, keywords: List[str]) -> int:
 def deadly_demise(keywords: List[str]) -> int:
     deadly_demise_full = check_keyword('deadly_demise', keywords)
     if deadly_demise_full:
-        # if 6 in np.random.randint(1, 7, 1):
         if 6 in roll(1):
             explosion_damage = get_keyword_x_value(deadly_demise_full)
             logger.debug(f'Exploding for {explosion_damage} damage in a 6-inch radius!')
