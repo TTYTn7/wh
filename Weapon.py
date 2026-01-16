@@ -1,6 +1,5 @@
 # Weapons
 from utility_functions import *
-import numpy as np
 import logging
 logger = logging.getLogger(__name__)
 from typing import List, Tuple, TYPE_CHECKING
@@ -65,7 +64,8 @@ class Weapon:
 
     def get_num_attacks(self, engagement: 'Engagement'):
         if 'D' in str(self.attacks).upper():
-            num_attacks = np.random.randint(1, 7, int(self.attacks[1]))
+            # num_attacks = np.random.randint(1, 7, int(self.attacks[1]))
+            num_attacks = roll(int(self.attacks[1]))
         else:
             num_attacks = self.attacks
         num_attacks += rapid_fire(self.weapon_range, self.keywords, engagement.distance)
@@ -80,7 +80,8 @@ class Weapon:
             logger.debug('All attacks automatically hit due to the weapon having the "torrent" keyword.')
             return num_attacks, 0
 
-        rolls =  np.random.randint(1, 7, num_attacks)
+        # rolls =  np.random.randint(1, 7, num_attacks)
+        rolls = roll(num_attacks)
         num_crit_hits, rolls = handle_crits(rolls, 1, 6)
         if not engagement.line_of_sight: # implied that the weapon has 'indirect_fire' keyword, else would have failed the self.can_attack(engagement) check
             rolls = rolls[(rolls > 3)]
@@ -121,7 +122,8 @@ class Weapon:
                 f'keyword. Only {num_hits} need to be rolled for.'
             )
 
-        rolls = np.random.randint(1, 7, num_hits)
+        # rolls = np.random.randint(1, 7, num_hits)
+        rolls = roll(num_hits)
         crit_success_boundary = anti_keyword(self.keywords, engagement.opponent.keywords)
 
         num_crit_wounds, rolls = handle_crits(rolls, fail_boundary=1, success_boundary=crit_success_boundary)

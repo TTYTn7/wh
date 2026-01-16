@@ -1,5 +1,4 @@
 from utility_functions import *
-import numpy as np
 import logging
 logger = logging.getLogger(__name__)
 from typing import List, Dict, TYPE_CHECKING
@@ -50,10 +49,14 @@ class Model:
         if 'devastating_wounds' in weapon.keywords:
             wounds_taken += num_crit_wounds
             num_wounds -= num_crit_wounds
+            logger.debug(f'Suffering {num_crit_wounds} mortal wounds due to {num_crit_wounds} critical wounds from a \
+             weapon with the devastating wounds keyword. Remaining wounds to resolve: {num_wounds}')
 
-        rolls = np.random.randint(1, 7, num_wounds)
-        wounds_taken += (rolls == 1).sum() # Unmodified rolls of 1 always fail
-        logger.debug(f'Initial save rolls: {rolls}. Critical fails: {wounds_taken}. Reminder rolls: {rolls[(rolls != 1)]}')
+        # rolls = np.random.randint(1, 7, num_wounds)
+        rolls = roll(num_wounds)
+        crit_fails = (rolls == 1).sum() # Unmodified rolls of 1 always fail
+        wounds_taken += crit_fails
+        logger.debug(f'Initial save rolls: {rolls}. Critical fails: {crit_fails}. Reminder rolls: {rolls[(rolls != 1)]}')
         rolls = rolls[(rolls != 1)] # Exclude auto failed rolls
 
         normal_save = self.save

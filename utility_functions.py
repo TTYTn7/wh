@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.typing import NDArray
 import logging
 logger = logging.getLogger(__name__)
 from typing import List, Tuple, TYPE_CHECKING
@@ -7,7 +8,11 @@ if TYPE_CHECKING:
     from Engagement import Engagement
 
 
-def handle_crits(rolls: np.array, fail_boundary: int, success_boundary: int) -> Tuple[int, np.array]:
+def roll(num_rolls: int) -> NDArray[np.integer]:
+    return np.random.randint(1, 7, num_rolls)
+
+
+def handle_crits(rolls: NDArray[np.integer], fail_boundary: int, success_boundary: int) -> Tuple[int, NDArray[np.integer]]:
     logger.debug(
         f'Rolls: {rolls}. Critical fail boundary: {fail_boundary}, critical success boundary: {success_boundary}.'
     )
@@ -35,7 +40,8 @@ def find_wound_roll_requirement(strength: int, toughness: int) -> int:
 
 
 def hazardous() -> int:
-    if 6 in np.random.randint(1, 7, 1):
+    # if 6 in np.random.randint(1, 7, 1):
+    if 6 in roll(1):
         logger.debug('Weapon exploding because it\'s hazardous and rolled a 6.')
         return 3
     return 0
@@ -69,9 +75,10 @@ def sustained_hits(num_crit_hits: int, keywords: List[str]) -> int:
     return 0
 
 
-def twin_linked(rolls: np.array, wound_roll_requirement: int) -> int:
+def twin_linked(rolls: NDArray[np.integer], wound_roll_requirement: int) -> int:
     num_unsuccessful_rolls = (rolls < wound_roll_requirement).sum()
-    re_rolls = np.random.randint(1, 7, num_unsuccessful_rolls)
+    # re_rolls = np.random.randint(1, 7, num_unsuccessful_rolls)
+    re_rolls = roll(num_unsuccessful_rolls)
     successful_rolls = (re_rolls >= wound_roll_requirement)
     logger.debug(
         f'Using twin-linked. Rolls: {rolls} with requirement {wound_roll_requirement}.'
@@ -127,7 +134,8 @@ def feel_no_pain(damage_taken: int, keywords: List[str]) -> int:
     damage_ignored = 0
     feel_no_pain_full = check_keyword('feel_no_pain', keywords)
     if feel_no_pain_full:
-        rolls = np.random.randint(1, 7, damage_taken)
+        # rolls = np.random.randint(1, 7, damage_taken)
+        rolls = roll(damage_taken)
         amount_of_pain_not_felt = get_keyword_x_value(feel_no_pain_full)
         damage_ignored = (rolls >= amount_of_pain_not_felt).sum()
         logger.debug(
@@ -140,7 +148,8 @@ def feel_no_pain(damage_taken: int, keywords: List[str]) -> int:
 def deadly_demise(keywords: List[str]) -> int:
     deadly_demise_full = check_keyword('deadly_demise', keywords)
     if deadly_demise_full:
-        if 6 in np.random.randint(1, 7, 1):
+        # if 6 in np.random.randint(1, 7, 1):
+        if 6 in roll(1):
             explosion_damage = get_keyword_x_value(deadly_demise_full)
             logger.debug(f'Exploding for {explosion_damage} damage in a 6-inch radius!')
             return explosion_damage
