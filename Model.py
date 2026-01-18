@@ -1,10 +1,11 @@
 from utility_functions import *
 import logging
 logger = logging.getLogger(__name__)
-from typing import List, Dict, TYPE_CHECKING
+from typing import List, Dict, Set, TYPE_CHECKING
 if TYPE_CHECKING:
     from Weapon import Weapon
     from Engagement import Engagement
+    from Unit import Unit
 
 
 class Model:
@@ -22,15 +23,17 @@ class Model:
             melee_weapons: Dict[str, 'Weapon'],
             abilities: List,
             faction: List[str],
-            keywords: List[str],
-            faction_keywords: List[str]
+            keywords: Set[str],
+            faction_keywords: List[str],
+            in_melee_with: List['Unit'] # Each unit on the battlefield should get a unique identifier so we can keep track
     ):
         self.name = name
         self.movement = movement
         self.toughness = toughness
         self.save = save
         self.invulnerable_save = invulnerable_save
-        self.wounds = wounds
+        self.starting_wounds = wounds
+        self.current_wounds = wounds
         self.leadership = leadership
         self.objective_control = objective_control
         self.melee_weapons = melee_weapons
@@ -39,6 +42,68 @@ class Model:
         self.faction = faction
         self.keywords = keywords
         self.faction_keywords = faction_keywords
+        self.alive = True
+        self.in_melee_with = in_melee_with
+        self.last_action = None
+
+    def can_shoot(self, weapon: 'Weapon', engagement: 'Engagement') -> bool:
+        if self.last_action == 'advanced' and 'assault' not in weapon.keywords:
+            logger.debug(
+                f'Cannot attack because the weapon wielder advanced and the weapon has no assault capabilities. '
+                f'Weapon keywords: {weapon.keywords}.'
+            )
+            return False
+        if self.last_action == 'fall_back':
+            logger.debug('Cannot attack because the weapon wielder fell back.')
+            return False
+        if engagement.distance > weapon.weapon_range:
+            logger.debug(
+                f'Cannot attack because the distance to target ({engagement.distance}) is larger than '
+                f'the weapon\'s range ({weapon.weapon_range}).'
+            )
+            return False
+        if not engagement.line_of_sight and 'indirect_fire' not in weapon.keywords:
+            logger.debug(
+                f'Cannot attack because target is beyond line of sight and the weapon has no indirect fire capabilities. '
+                f'Weapon keywords: {weapon.keywords}.'
+            )
+            return False
+
+        if 'blast' in weapon.keywords:
+            if engagement.opponent.in_melee_with:
+                logger.debug(
+                    f'Cannot shoot because weapon has the \'blast\' keyword and target is engaged with an ally.'
+                    f'Weapon keywords: {weapon.keywords}.'
+                )
+                return False
+
+        # If in melee (and not a monster of vehicle), we can only shoot the enemy we're in melee with, and only with a pistol
+        if self.in_melee_with and not any(keyword in self.keywords for keyword in ['monster', 'vehicle']):
+            if 'pistol' not in weapon.keywords:
+                logger.debug(
+                    f'Cannot shoot because model is in melee and weapon is not a pistol.'
+                    f'Weapon keywords: {weapon.keywords}.'
+                )
+                return False
+            if engagement.opponent not in self.in_melee_with: # TODO - make sure this works. E.g. UID on Unit level, that gets passed to Models in that unit? Or at least to this method?
+                logger.debug(f'Cannot shoot this target because model is in melee with a different target.')
+                return False
+            logger.debug(
+                f'Can shoot because model is in melee with the target and has a pistol.'
+                f'Weapon keywords: {weapon.keywords}.'
+            )
+            return True
+
+        # If we arent in melee, then we need to consider if opponent is in melee
+        if engagement.opponent.in_melee_with:
+            if not any(keyword in engagement.opponent.keywords for keyword in ['monster', 'vehicle']):
+                logger.debug(
+                    f'Cannot shoot because target is engaged and is not a monster or a vehicle.'
+                    f'Target keywords: {engagement.opponent.keywords}'
+                )
+                return False
+
+        return True
 
     def save_roll(self, num_wounds: int, num_crit_wounds: int, weapon: 'Weapon', engagement: 'Engagement') -> int:
         if num_wounds == 0:
@@ -88,9 +153,10 @@ class Model:
 
     def take_damage(self, damage_taken: int):
         damage_taken -= feel_no_pain(damage_taken, self.keywords)
-        self.wounds -= damage_taken
-        if self.wounds < 1:
-            print(f'Alas, death claims {self.name}!')
+        self.current_wounds -= damage_taken
+        if self.current_wounds < 1:
+            logger.debug(f'Alas, death claims {self.name}!')
+            self.alive = False
 
 
     # save rolls
