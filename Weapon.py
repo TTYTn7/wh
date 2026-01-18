@@ -2,7 +2,7 @@
 from utility_functions import *
 import logging
 logger = logging.getLogger(__name__)
-from typing import List, Tuple, TYPE_CHECKING
+from typing import Tuple, TYPE_CHECKING
 if TYPE_CHECKING:
     from Engagement import Engagement
     from Model import Model
@@ -18,7 +18,7 @@ class Weapon:
             strength: int,
             armor_piercing: int,
             damage: int,
-            keywords: List[str]
+            keywords: Set[str]
     ):
         self.name = name
         self.weapon_range = weapon_range
@@ -28,39 +28,6 @@ class Weapon:
         self.armor_piercing = armor_piercing
         self.damage = damage
         self.keywords = keywords
-
-    def can_attack(self, engagement: 'Engagement') -> bool:
-        if engagement.last_action == 'advanced' and 'assault' not in self.keywords:
-            logger.debug(
-                f'Cannot attack because the weapon wielder advanced and the weapon has no assault capabilities. '
-                f'Weapon keywords: {self.keywords}.'
-            )
-            return False
-        if engagement.distance > self.weapon_range:
-            logger.debug(
-                f'Cannot attack because the distance to target ({engagement.distance}) is larger than '
-                f'the weapon range ({self.weapon_range}).'
-            )
-            return False
-        if not engagement.line_of_sight and 'indirect_fire' not in self.keywords:
-            logger.debug(
-                f'Cannot attack because target is beyond line of sight and the weapon has no indirect fire capabilities. '
-                f'Weapon keywords: {self.keywords}.'
-            )
-            return False
-        if engagement.distance <= 1 and 'pistol' not in self.keywords:
-            logger.debug(
-                f'Cannot attack because the target is in melee range and the weapon is not a pistol. '
-                f'Weapon keywords: {self.keywords}.'
-            )
-            return False
-        if engagement.engaging_ally and 'blast' in self.keywords:
-            logger.debug(
-                f'Cannot attack because the weapon has the "blast" keyword and there is an ally unit within the '
-                f'target\'s engagement range.'
-            )
-            return False
-        return True
 
     def get_num_attacks(self, engagement: 'Engagement'):
         if 'D' in str(self.attacks).upper():
@@ -72,11 +39,7 @@ class Weapon:
             num_attacks += blast(engagement)
         return num_attacks
 
-
-    def hit_roll(self, engagement: 'Engagement') -> Tuple[int|None, int|None]:
-        if not self.can_attack(engagement):
-            return None, None
-
+    def hit_roll(self, engagement: 'Engagement') -> Tuple[int, int]:
         num_attacks = self.get_num_attacks(engagement)
         logger.debug(f'Weapon number of attacks: {num_attacks}.')
         if 'torrent' in self.keywords:
@@ -99,11 +62,11 @@ class Weapon:
         return num_hits, num_crit_hits
 
     def wound_roll(self, engagement: 'Engagement', wielder: 'Model') -> Tuple[int, int] | None:
+        if not wielder.can_shoot(self, engagement):
+            return None
         num_hits, num_crit_hits = self.hit_roll(engagement)
         if num_hits == 0:
             return 0, 0
-        elif num_hits is None:
-            return None
 
         num_wounds = 0
         if 'lethal_hits' in self.keywords:  # crit hits automatically become wounds
