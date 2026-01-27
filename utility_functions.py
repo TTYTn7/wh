@@ -2,7 +2,7 @@ import numpy as np
 from numpy.typing import NDArray
 import logging
 logger = logging.getLogger(__name__)
-from typing import List, Tuple, TYPE_CHECKING
+from typing import Tuple, Set, TYPE_CHECKING
 if TYPE_CHECKING:
     from Weapon import Weapon
     from Engagement import Engagement
@@ -57,6 +57,18 @@ def calculate_damage(num_wounds_taken: int, weapon: 'Weapon', engagement: 'Engag
     return damage
 
 
+def charge(distance: int, re_roll: str, modifier: int=0) -> bool:
+    if re_roll == 'ones':
+        charge_roll = re_roll_ones(roll(2)) + modifier
+    elif re_roll == 'both':
+        charge_roll = roll(2) + modifier
+        if charge_roll.sum() < distance:
+            charge_roll = roll(2) + modifier
+    else:
+        charge_roll = roll(2) + modifier
+    return charge_roll.sum() >= distance
+
+
 # Keyword functions:
 def get_keyword_x_value(keyword: str | None) -> int:
     if keyword:
@@ -64,14 +76,14 @@ def get_keyword_x_value(keyword: str | None) -> int:
     return 0
 
 
-def check_keyword(target_keyword: str, keywords: List[str]) -> str | None:
+def check_keyword(target_keyword: str, keywords: Set[str]) -> str | None:
     occurrences = [keyword for keyword in keywords if target_keyword in keyword]
     if occurrences:
         return occurrences[0]
     return None # if target keyword not present
 
 
-def sustained_hits(num_crit_hits: int, keywords: List[str]) -> int:
+def sustained_hits(num_crit_hits: int, keywords: Set[str]) -> int:
     if num_crit_hits == 0:
         return 0
     sustained_hits_keyword_present = check_keyword('sustained_hits', keywords)
@@ -96,7 +108,7 @@ def twin_linked(rolls: NDArray[np.integer], wound_roll_requirement: int) -> NDAr
     return re_rolls
 
 
-def rapid_fire(weapon_range: int, keywords: List[str], distance: float) -> int:
+def rapid_fire(weapon_range: int, keywords: Set[str], distance: float) -> int:
     if distance > (weapon_range / 2):
         return 0
     rapid_fire_keyword_present = check_keyword('rapid_fire', keywords)
@@ -146,21 +158,21 @@ def blast(engagement: 'Engagement') -> int:
     return engagement.num_targets // 5
 
 
-def melta(weapon_range: int, keywords: List[str], distance: float) -> int:
+def melta(weapon_range: int, keywords: Set[str], distance: float) -> int:
     if distance > (weapon_range / 2):
         return 0
     melta_keyword_present = check_keyword('melta', keywords)
     if melta_keyword_present:
         melta_value = get_keyword_x_value(melta_keyword_present)
         logger.debug(
-            f'Adding {melta_value} attacks due to distance to opponent ({distance}) being less than half of '
+            f'Adding {melta_value} damage due to distance to opponent ({distance}) being less than half of '
             f'the weapon\'s range ({weapon_range}) and the weapon having the {melta_keyword_present} keyword.'
         )
         return melta_value
     return 0
 
 
-def anti_keyword(keywords: List[str], opponent_keywords: List[str]) -> int:
+def anti_keyword(keywords: Set[str], opponent_keywords: Set[str]) -> int:
     anti_keyword_full = check_keyword('anti', keywords)
     if anti_keyword_full:
         target = anti_keyword.split('_')[1]
@@ -174,7 +186,14 @@ def anti_keyword(keywords: List[str], opponent_keywords: List[str]) -> int:
     return 6
 
 
-def feel_no_pain(damage_taken: int, keywords: List[str]) -> int:
+def big_guns_never_tire(attacker_keywords: Set[str], opponent_keywords: Set[str]) -> bool:
+    if any(keyword in opponent_keywords for keyword in ['monster', 'vehicle']) \
+        or any(keyword in attacker_keywords for keyword in ['monster', 'vehicle']):
+        return True
+    return False
+
+
+def feel_no_pain(damage_taken: int, keywords: Set[str]) -> int:
     damage_ignored = 0
     feel_no_pain_full = check_keyword('feel_no_pain', keywords)
     if feel_no_pain_full:
@@ -194,7 +213,7 @@ def hazardous(wielder: 'Model'):
         wielder.take_damage(3)
 
 
-def deadly_demise(keywords: List[str]) -> int:
+def deadly_demise(keywords: Set[str]) -> int:
     deadly_demise_full = check_keyword('deadly_demise', keywords)
     if deadly_demise_full:
         if 6 in roll(1):

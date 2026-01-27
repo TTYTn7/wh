@@ -48,7 +48,7 @@ class Weapon:
 
         rolls = roll(num_attacks)
         num_crit_hits, rolls = handle_crits(rolls, 1, 6)
-        if not engagement.line_of_sight: # implied that the weapon has 'indirect_fire' keyword, else would have failed the self.can_attack(engagement) check
+        if not engagement.line_of_sight: # implied that the weapon has 'indirect_fire' keyword, else would have failed the wielder.can_shoot() check
             rolls = rolls[(rolls > 3)]
             rolls -= 1
 
@@ -61,8 +61,8 @@ class Weapon:
         logger.debug(f'Hits: {num_hits}, of which Crits: {num_crit_hits}')
         return num_hits, num_crit_hits
 
-    def wound_roll(self, engagement: 'Engagement', wielder: 'Model') -> Tuple[int, int] | None:
-        if not wielder.can_shoot(self, engagement):
+    def wound_roll(self, engagement: 'Engagement', wielder: 'Model', wielder_unit: 'Unit') -> Tuple[int, int] | None:
+        if not wielder.can_shoot(self, engagement, wielder_unit):
             return None
         num_hits, num_crit_hits = self.hit_roll(engagement)
         if num_hits == 0:
@@ -72,17 +72,17 @@ class Weapon:
         if 'lethal_hits' in self.keywords:  # crit hits automatically become wounds
             num_wounds, num_hits = lethal_hits(num_hits, num_crit_hits)
 
-        wound_roll_requirement = find_wound_roll_requirement(self.strength, engagement.opponent.toughness)
+        wound_roll_requirement = find_wound_roll_requirement(self.strength, engagement.opponent.get_toughness())
         logger.debug(
             f'Wound roll requirement is {wound_roll_requirement} due to weapon strength being {self.strength} and '
-            f'opponent toughness being {engagement.opponent.toughness}.'
+            f'opponent toughness being {engagement.opponent.get_toughness()}.'
         )
 
         rolls = roll(num_hits)
         if 'twin-linked' in self.keywords:
             rolls = twin_linked(rolls, wound_roll_requirement)
 
-        crit_success_boundary = anti_keyword(self.keywords, engagement.opponent.keywords)
+        crit_success_boundary = anti_keyword(self.keywords, engagement.opponent.get_all_models_keywords())
         num_crit_wounds, rolls = handle_crits(rolls, fail_boundary=1, success_boundary=crit_success_boundary)
 
         if 'lance' in self.keywords:
