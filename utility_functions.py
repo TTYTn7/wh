@@ -132,8 +132,8 @@ def lethal_hits(num_hits: int, num_crit_hits: int) -> Tuple[int, int]:
     return wounds, num_hits
 
 
-def lance(rolls: NDArray[np.integer], engagement: 'Engagement') -> NDArray[np.integer]:
-    if engagement.last_action == 'charged':
+def lance(rolls: NDArray[np.integer], wielder_unit: 'Unit') -> NDArray[np.integer]:
+    if wielder_unit.last_action == 'charged':
         upgraded_rolls = rolls + 1
         logger.debug(
             f'Rolls get upgraded due to the wielder having charged and the weapon having the "lance" keyword. '
@@ -143,8 +143,8 @@ def lance(rolls: NDArray[np.integer], engagement: 'Engagement') -> NDArray[np.in
     return rolls
 
 
-def heavy(rolls: NDArray[np.integer], engagement: 'Engagement') -> NDArray[np.integer]:
-    if engagement.last_action == 'remained_stationary':
+def heavy(rolls: NDArray[np.integer], wielder_unit: 'Unit') -> NDArray[np.integer]:
+    if wielder_unit.last_action == 'remained_stationary':
         upgraded_rolls = rolls + 1
         logger.debug(
             f'Rolls get upgraded due to the wielder having remained stationary and the weapon having the "heavy" keyword. '
@@ -155,7 +155,7 @@ def heavy(rolls: NDArray[np.integer], engagement: 'Engagement') -> NDArray[np.in
 
 
 def blast(engagement: 'Engagement') -> int:
-    return engagement.num_targets // 5
+    return len(engagement.opponent.models) // 5
 
 
 def melta(weapon_range: int, keywords: Set[str], distance: float) -> int:

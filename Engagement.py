@@ -21,10 +21,5 @@ class LastAction(StrEnum):
 class Engagement:
     distance: int
     line_of_sight: bool
-    # remained_stationary: bool
-    # charged: bool
-    last_action: LastAction
     in_cover: bool
-    engaging_ally: bool
-    num_targets: int
     opponent: 'Unit'

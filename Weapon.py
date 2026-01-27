@@ -39,7 +39,7 @@ class Weapon:
             num_attacks += blast(engagement)
         return num_attacks
 
-    def hit_roll(self, engagement: 'Engagement') -> Tuple[int, int]:
+    def hit_roll(self, wielder_unit: 'Unit', engagement: 'Engagement') -> Tuple[int, int]:
         num_attacks = self.get_num_attacks(engagement)
         logger.debug(f'Weapon number of attacks: {num_attacks}.')
         if 'torrent' in self.keywords:
@@ -53,7 +53,7 @@ class Weapon:
             rolls -= 1
 
         if 'heavy' in self.keywords:
-            rolls = heavy(rolls, engagement)
+            rolls = heavy(rolls, wielder_unit)
 
         logger.debug(f'Hit requirement is {self.ballistic_skill}')
         num_hits = (rolls >= self.ballistic_skill).sum() + num_crit_hits
@@ -64,7 +64,7 @@ class Weapon:
     def wound_roll(self, engagement: 'Engagement', wielder: 'Model', wielder_unit: 'Unit') -> Tuple[int, int] | None:
         if not wielder.can_shoot(self, engagement, wielder_unit):
             return None
-        num_hits, num_crit_hits = self.hit_roll(engagement)
+        num_hits, num_crit_hits = self.hit_roll(wielder_unit, engagement)
         if num_hits == 0:
             return 0, 0
 
@@ -86,7 +86,7 @@ class Weapon:
         num_crit_wounds, rolls = handle_crits(rolls, fail_boundary=1, success_boundary=crit_success_boundary)
 
         if 'lance' in self.keywords:
-            rolls = lance(rolls, engagement)
+            rolls = lance(rolls, wielder_unit)
 
         if 'hazardous' in self.keywords:
             hazardous(wielder)
