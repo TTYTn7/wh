@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+# Weapons
 from utility_functions import *
 import logging
 logger = logging.getLogger(__name__)
@@ -7,16 +7,27 @@ if TYPE_CHECKING:
     from Engagement import Engagement
     from Model import Model
 
-@dataclass(frozen=True)
+
 class Weapon:
-    name: str
-    weapon_range: int
-    attacks: int | str
-    ballistic_skill: int
-    strength: int
-    armor_piercing: int
-    damage: int
-    keywords: Set[str]
+    def __init__(
+            self,
+            name: str,
+            weapon_range: int,
+            attacks: int | str,
+            ballistic_skill: int,
+            strength: int,
+            armor_piercing: int,
+            damage: int,
+            keywords: Set[str]
+    ):
+        self.name = name
+        self.weapon_range = weapon_range
+        self.attacks = attacks
+        self.ballistic_skill = ballistic_skill
+        self.strength = strength
+        self.armor_piercing = armor_piercing
+        self.damage = damage
+        self.keywords = keywords
 
     def get_num_attacks(self, engagement: 'Engagement'):
         if 'D' in str(self.attacks).upper():
