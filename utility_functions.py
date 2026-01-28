@@ -7,6 +7,7 @@ if TYPE_CHECKING:
     from Weapon import Weapon
     from Engagement import Engagement
     from Model import Model
+    from Unit import Unit
 
 
 def roll(num_rolls: int) -> NDArray[np.integer]:
@@ -175,7 +176,7 @@ def melta(weapon_range: int, keywords: Set[str], distance: float) -> int:
 def anti_keyword(keywords: Set[str], opponent_keywords: Set[str]) -> int:
     anti_keyword_full = check_keyword('anti', keywords)
     if anti_keyword_full:
-        target = anti_keyword.split('_')[1]
+        target = anti_keyword_full.split('_')[1]
         if target in opponent_keywords:
             new_crit_success_threshold = get_keyword_x_value(anti_keyword_full)
             logger.debug(

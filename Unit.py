@@ -3,7 +3,7 @@ from collections import defaultdict
 from copy import deepcopy
 import logging
 logger = logging.getLogger(__name__)
-from typing import List, Tuple, Set, TYPE_CHECKING
+from typing import List, Set, TYPE_CHECKING
 if TYPE_CHECKING:
     from Model import Model
     from Engagement import Engagement
@@ -16,7 +16,7 @@ class Unit:
             name: str,
             models: List['Model'],
             point_cost: int,
-            in_melee_with: List['Unit']
+            in_melee_with: List['Unit'] # TODO Each unit on the battlefield should get a unique identifier so we can keep track
     ):
         self.name = name
         self.models = models

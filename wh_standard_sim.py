@@ -6,6 +6,7 @@ from Unit import Unit
 from Model import Model
 from Weapon import Weapon
 from warhammer.utility_functions import calculate_damage
+from copy import deepcopy
 import logging
 
 logging.basicConfig(
@@ -60,8 +61,8 @@ def multiple_rounds_with_model(num_rounds: int, engagement: Engagement):
 
 
 # Unit v Unit
-example_terminator_unit = (unit_collection['example_terminator_unit'] * 1)[0]
-example_terminator_enemy_unit = (unit_collection['example_terminator_unit'] * 1)[0]
+example_terminator_unit = deepcopy(unit_collection['example_terminator_unit'])
+example_terminator_enemy_unit = deepcopy(unit_collection['example_terminator_unit'])
 
 # unit_engagement_details = Engagement(
 #     distance=3, line_of_sight=True, last_action=LastAction.remained_stationary, in_cover=True,

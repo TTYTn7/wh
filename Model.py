@@ -1,7 +1,7 @@
 from utility_functions import *
 import logging
 logger = logging.getLogger(__name__)
-import copy
+from copy import deepcopy
 from typing import List, Dict, Set, TYPE_CHECKING
 if TYPE_CHECKING:
     from Weapon import Weapon
@@ -27,7 +27,6 @@ class Model:
             keywords: Set[str],
             faction_keywords: List[str],
             # unit: 'Unit'
-            # in_melee_with: List['Unit'] # Each unit on the battlefield should get a unique identifier so we can keep track
     ):
         self.name = name
         self.movement = movement
@@ -46,14 +45,12 @@ class Model:
         self.faction_keywords = faction_keywords
         self.alive = True
         # self.unit = unit
-        # self.in_melee_with = in_melee_with
-        # self.last_action = None
 
     def __mul__(self, count: int) -> List:
         """Return a list of independent copies of this item"""
         if not isinstance(count, int) or count < 0:
             raise ValueError('Can only multiply items by non-negative integers')
-        return [copy.copy(self) for _ in range(count)]
+        return [deepcopy(self) for _ in range(count)]
 
     def __rmul__(self, count: int):
         """Support reverse multiplication (3 * item)"""

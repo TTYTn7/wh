@@ -6,6 +6,7 @@ from typing import Tuple, TYPE_CHECKING
 if TYPE_CHECKING:
     from Engagement import Engagement
     from Model import Model
+    from Unit import Unit
 
 
 class Weapon:
