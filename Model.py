@@ -162,7 +162,7 @@ class Model:
         return wounds_taken
 
     def take_damage(self, damage_taken: int):
-        damage_taken -= feel_no_pain(damage_taken, self.keywords)
+        damage_taken -= feel_no_pain(damage_taken, self.abilities)
         self.current_wounds -= damage_taken
         if self.current_wounds < 1:
             logger.debug(f'Alas, death claims {self.name}!')

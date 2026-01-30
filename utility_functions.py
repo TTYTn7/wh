@@ -10,8 +10,9 @@ if TYPE_CHECKING:
     from Unit import Unit
 
 
-def roll(num_rolls: int) -> NDArray[np.integer]:
-    return np.random.randint(1, 7, num_rolls)
+def roll(num_rolls: int, die_sides: int=6) -> NDArray[np.integer]:
+    # return np.random.randint(1, 7, num_rolls)
+    return np.random.randint(1, die_sides+1, num_rolls)
 
 
 def re_roll_fails(rolls: NDArray[np.integer], success_boundary: int) -> NDArray[np.integer]:

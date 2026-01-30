@@ -32,7 +32,7 @@ class Weapon:
 
     def get_num_attacks(self, engagement: 'Engagement'):
         if 'D' in str(self.attacks).upper():
-            num_attacks = roll(int(self.attacks[1]))
+            num_attacks = roll(1, int(self.attacks[1]))
         else:
             num_attacks = self.attacks
         num_attacks += rapid_fire(self.weapon_range, self.keywords, engagement.distance)

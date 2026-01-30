@@ -1,6 +1,7 @@
 from math import ceil
 from collections import defaultdict
 from copy import deepcopy
+from utility_functions import roll
 import logging
 logger = logging.getLogger(__name__)
 from typing import List, Set, TYPE_CHECKING
@@ -36,7 +37,11 @@ class Unit:
         """Support reverse multiplication (3 * item)"""
         return self.__mul__(count)
 
-    def allocate_wounds(self, num_wounds: int, damage_per_wound: int):
+    def allocate_wounds(self, num_wounds: int, damage_per_wound: int|str):
+        if 'D' in str(damage_per_wound).upper():
+            logger.debug(f'Rolling a {damage_per_wound} die to find damage per wound.')
+            damage_per_wound = roll(1, int(damage_per_wound[1]))
+            logger.debug(f'Taking {damage_per_wound} damage per wound.')
         while num_wounds > 0 and self.models:
             # Find first model that can take damage
             model = next((model for model in self.models if model.current_wounds < model.starting_wounds), self.models[0])
